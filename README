@@ -1,0 +1,2 @@
+sudo aptitude install libnfc-dev libnfc-bin
+go mod download github.com/clausecker/nfc/v2
