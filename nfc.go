@@ -90,8 +90,15 @@ func http_sendResource(local_path string, out http.ResponseWriter) {
 	out.Write(content)
 }
 
+func HandleUserArrival(user_channel chan *User) {
+	for {
+		u := <-user_channel
+		log.Printf("Channel: %s\n", u.Name)
+	}
+}
 func main() {
-	bindAddress := flag.String("bind-address", ":2000", "Port to serve from")
+	bindAddress := flag.String("bind-address", "localhost:2000", "Port to serve from")
+	flag.Parse()
 
 	pnd, err := nfc.Open(devstr)
 	if err != nil {
@@ -110,10 +117,13 @@ func main() {
 
 	log.Println("opened device", pnd, pnd.Connection())
 
+	user_channel := make(chan *User)
+	go HandleUserArrival(user_channel)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http_sendResource(MainPageTemplate, w)
 	})
-	http.ListenAndServe(*bindAddress, nil)
+	go http.ListenAndServe(*bindAddress, nil)
 
 	for {
 		card_id, err := GetCard(&pnd)
@@ -133,11 +143,13 @@ func main() {
 			go blink("00ff00", 200)
 			json, _ := json.Marshal(user)
 			log.Printf("Got user %s\n", json)
-			userstore.writeDatabase()
+			user_channel <- user
 		} else {
 			beep(true)
 			go blink("ff0000", 2000)
 			log.Printf("Unknown user.\n")
+			user = userstore.createEmptyUser(code)
+			user_channel <- user
 		}
 		if err := log_tag(card_id); err != nil {
 			log.Printf("Can't write to logfile: %v\n", err)
