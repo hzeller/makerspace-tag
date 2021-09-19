@@ -30,13 +30,6 @@ https://github.com/nfc-tools/libnfc/releases
 
 ## Building
 
-First time
-```
-go mod download github.com/clausecker/nfc/v2
-make
-```
-
-Then afterwards, just
 ```
 make
 ```
