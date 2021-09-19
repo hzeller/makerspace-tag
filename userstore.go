@@ -25,8 +25,13 @@ type User struct {
 }
 
 func BoolFromColumn(columns []string, index int) bool {
-	return true
+	if len(columns) <= index {
+		return false
+	}
+	value, err := strconv.ParseBool(columns[index])
+	return err == nil && value
 }
+
 func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 	line, err := reader.Read()
 	if err != nil {
@@ -56,6 +61,11 @@ func (user *User) WriteCSV(writer *csv.Writer) {
 	fields[0] = user.RFID
 	fields[1] = user.Name
 	fields[2] = strconv.FormatBool(user.Printer3D)
+	fields[3] = strconv.FormatBool(user.Laser)
+	fields[4] = strconv.FormatBool(user.Vinyl)
+	fields[5] = strconv.FormatBool(user.CNC)
+	fields[6] = strconv.FormatBool(user.Tablesaw)
+	fields[7] = strconv.FormatBool(user.Electronics)
 	writer.Write(fields)
 }
 

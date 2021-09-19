@@ -105,6 +105,7 @@ func main() {
 			beep(false)
 			go blink("00ff00", 200)
 			log.Printf("Got user %s\n", user.Name)
+			userstore.writeDatabase()
 		} else {
 			beep(true)
 			go blink("ff0000", 2000)
