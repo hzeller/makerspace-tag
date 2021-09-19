@@ -21,3 +21,19 @@ ExecStart=/usr/local/bin/microorb -P 9999
 [Install]
 WantedBy=multi-user.target
 ---------------
+
+---- /etc/systemd/system/makerspace_tag.service
+[Unit]
+Description=Makerspace Tag
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=pi
+ExecStart=/home/pi/bin/run-makerspace-tag.sh
+
+[Install]
+WantedBy=multi-user.target
+---------------
