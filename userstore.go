@@ -14,14 +14,14 @@ import (
 )
 
 type User struct {
-	RFID        string
-	Name        string
-	Printer3D   bool
-	Laser       bool
-	Vinyl       bool
-	CNC         bool
-	Tablesaw    bool
-	Electronics bool
+	RFID        string `json:"user_rfid"`
+	Name        string `json:"user_name"`
+	Printer3D   bool   `json:"perm_printer3d"`
+	Laser       bool   `json:"perm_laser"`
+	Vinyl       bool   `json:"perm_vinyl"`
+	CNC         bool   `json:"perm_cnc"`
+	Tablesaw    bool   `json:"perm_tablesaw"`
+	Electronics bool   `json:"perm_electronics"`
 }
 
 func BoolFromColumn(columns []string, index int) bool {
@@ -89,6 +89,12 @@ func NewUserStore(storeFilename string) *UserStore {
 
 func (s *UserStore) get_user(code string) *User {
 	return s.code2user[code]
+}
+
+func (s *UserStore) createEmptyUser(code string) *User {
+	return &User{
+		RFID: code,
+	}
 }
 
 func (s *UserStore) readDatabase() bool {

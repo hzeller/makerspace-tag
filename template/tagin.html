@@ -1,0 +1,48 @@
+<head>
+  <style>
+   table {
+     border: 1px solid black;
+     font-size: 2vw;
+     border-spacing: 3px;
+   }
+   table tr td:nth-child(even) { background: #00ffff; }
+   table tr td:nth-child(odd) { background: #aaffff; }
+
+   table tr th:nth-child(even) { background: #00ffff; }
+   table tr th:nth-child(odd) { background: #aaffff; }
+
+   td { text-align: center; border-left: 1px solid black; }
+   th { text-align: center; border-left: 1px solid black; }
+   input { font-size: 2vw; }
+   input[type='checkbox'] { width: 2vw; height: 2vw; }
+  </style>
+</head>
+<body bgcolor="#D8BCAB">
+  <h1 align="center">Santa Clara University Maker Innovation Lab</h1>
+  <form align="center" name="update_user" id="update_user">
+    <input type="hidden" name="user_rfid"/>
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>3D Printer</th>
+        <th>Laser</th>
+        <th>Vinyl</th>
+        <th>CNC</th>
+        <th>Tablesaw</th>
+        <th>Electronics</th>
+        <th></th>
+      </tr>
+      <tr>
+        <td><input type="text" size="30 "name="user_name"/></td>
+        <td><input type="checkbox" name="perm_printer3d"/></td>
+        <td><input type="checkbox" name="perm_laser"/></td>
+        <td><input type="checkbox" name="perm_vinyl"/></td>
+        <td><input type="checkbox" name="perm_cnc"/></td>
+        <td><input type="checkbox" name="perm_tablesaw"/></td>
+        <td><input type="checkbox" name="perm_electronics"/></td>
+        <td><button name="update" value="Update">Update</button></td>
+      </tr>
+    </table>
+
+  </form>
+</body>

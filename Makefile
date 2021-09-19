@@ -1,7 +1,9 @@
+GO=/usr/local/go/bin/go
+
 all: nfc
 
 nfc : *.go
-	go build
+	$(GO) build
 
 clean:
 	rm -f nfc

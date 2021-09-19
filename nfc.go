@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	nfc "github.com/clausecker/nfc/v2"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -12,9 +15,12 @@ import (
 
 const (
 	WavPlayer     = "/usr/bin/aplay"
-	SoundPath     = "/home/pi/tagsounds"
-	LogDir        = "/home/pi/tag-log"
-	UserStoreFile = "/home/pi/tag-users.csv"
+	BaseDir       = "/home/pi"
+	SoundPath     = BaseDir + "/tagsounds"
+	LogDir        = BaseDir + "/tag-log"
+	UserStoreFile = BaseDir + "/tag-users.csv"
+
+	MainPageTemplate = BaseDir + "/template/tagin.html"
 )
 
 var (
@@ -70,7 +76,23 @@ func log_tag(card [10]byte) error {
 	return nil
 }
 
+func http_sendResource(local_path string, out http.ResponseWriter) {
+	cache_time := 10 // Should be large once we are done.
+	header_addon := ""
+	content, _ := ioutil.ReadFile(local_path)
+	if content == nil {
+		cache_time = 10 // fallbacks might change more often.
+		out.WriteHeader(http.StatusNotFound)
+		header_addon = ",must-revalidate"
+	}
+	out.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d%s", cache_time, header_addon))
+	out.Header().Set("Content-Type", "text/html; charset=utf-8")
+	out.Write(content)
+}
+
 func main() {
+	bindAddress := flag.String("bind-address", ":2000", "Port to serve from")
+
 	pnd, err := nfc.Open(devstr)
 	if err != nil {
 		log.Fatalln("could not open device:", err)
@@ -88,6 +110,11 @@ func main() {
 
 	log.Println("opened device", pnd, pnd.Connection())
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http_sendResource(MainPageTemplate, w)
+	})
+	http.ListenAndServe(*bindAddress, nil)
+
 	for {
 		card_id, err := GetCard(&pnd)
 		if err != nil {
@@ -104,7 +131,8 @@ func main() {
 		if user := userstore.get_user(code); user != nil {
 			beep(false)
 			go blink("00ff00", 200)
-			log.Printf("Got user %s\n", user.Name)
+			json, _ := json.Marshal(user)
+			log.Printf("Got user %s\n", json)
 			userstore.writeDatabase()
 		} else {
 			beep(true)
