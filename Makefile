@@ -1,7 +1,7 @@
 all: nfc
 
-% : %.go
-	go build $^
+nfc : *.go
+	go build
 
 clean:
 	rm -f nfc

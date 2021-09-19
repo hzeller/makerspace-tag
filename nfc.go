@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	WavPlayer = "/usr/bin/aplay"
-	SoundPath = "/home/pi/tagsounds"
-	LogDir    = "/home/pi/tag-log"
+	WavPlayer     = "/usr/bin/aplay"
+	SoundPath     = "/home/pi/tagsounds"
+	LogDir        = "/home/pi/tag-log"
+	UserStoreFile = "/home/pi/tag-users.csv"
 )
 
 var (
@@ -76,6 +77,11 @@ func main() {
 	}
 	defer pnd.Close()
 
+	userstore := NewUserStore(UserStoreFile)
+	if userstore == nil {
+		log.Fatalln("Can't read userstore " + UserStoreFile)
+	}
+
 	if err := pnd.InitiatorInit(); err != nil {
 		log.Fatalln("could not init initiator:", err)
 	}
@@ -93,12 +99,16 @@ func main() {
 			continue
 		}
 
-		if has_access(card_id) {
+		code := fmt.Sprintf("%X", card_id)
+
+		if user := userstore.get_user(code); user != nil {
 			beep(false)
 			go blink("00ff00", 200)
+			log.Printf("Got user %s\n", user.Name)
 		} else {
 			beep(true)
 			go blink("ff0000", 2000)
+			log.Printf("Unknown user.\n")
 		}
 		if err := log_tag(card_id); err != nil {
 			log.Printf("Can't write to logfile: %v\n", err)
