@@ -9,6 +9,7 @@ package main
 import (
 	"encoding/csv"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 )
@@ -69,6 +70,21 @@ func (user *User) WriteCSV(writer *csv.Writer) {
 	writer.Write(fields)
 }
 
+func BoolFromForm(r *http.Request, name string) bool {
+	return len(r.FormValue(name)) > 0
+}
+
+func (user *User) UpdateFromFormValues(r *http.Request) {
+	// Don't update RFID code
+	user.Name = r.FormValue("user_name")
+	user.Printer3D = BoolFromForm(r, "perm_printer3d")
+	user.Laser = BoolFromForm(r, "perm_laser")
+	user.Vinyl = BoolFromForm(r, "perm_vinyl")
+	user.CNC = BoolFromForm(r, "perm_cnc")
+	user.Tablesaw = BoolFromForm(r, "perm_tablesaw")
+	user.Electronics = BoolFromForm(r, "perm_electronics")
+}
+
 type UserStore struct {
 	filename  string
 	userList  []*User          // Sequence of users as in file
@@ -94,6 +110,37 @@ func (s *UserStore) get_user(code string) *User {
 func (s *UserStore) createEmptyUser(code string) *User {
 	return &User{
 		RFID: code,
+	}
+}
+
+// Function that updates a particular user. It will be called by
+// the UserStore with a pointer to the user. Tha Callee returns
+// 'true' if the transaction is to be performed
+type ModifyFun func(user *User) bool
+
+func (s *UserStore) InsertOrUpdateUser(rfid string, modifier ModifyFun) {
+	// Create a copy first
+	existing_user := s.get_user(rfid)
+	var to_modify User
+	if existing_user != nil {
+		to_modify = *existing_user
+	} else {
+		to_modify = *s.createEmptyUser(rfid)
+	}
+	if modifier(&to_modify) {
+		if to_modify.RFID != rfid || to_modify.Name == "" {
+			log.Printf("Insufficient data to modify\n")
+			return
+		}
+		if existing_user != nil {
+			// Update the existing pointer
+			*existing_user = to_modify
+		} else {
+			// store new.
+			s.userList = append(s.userList, &to_modify)
+			s.code2user[to_modify.RFID] = &to_modify
+		}
+		s.writeDatabase()
 	}
 }
 

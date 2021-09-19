@@ -94,9 +94,30 @@ func handleUserArrival(user_channel chan *User, w http.ResponseWriter, r *http.R
 	log.Println("Got arrival request\n")
 	// TODO: maybe time-out and return empty every now and then
 	u := <-user_channel
+	log.Println("arrival: got user from channel")
 	w.Header().Set("Conent-Type", "application/json")
 	json, _ := json.Marshal(u)
 	w.Write(json)
+}
+
+func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result chan *User, userstore *UserStore) {
+	defer http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	if err := r.ParseForm(); err != nil {
+		log.Printf("ParseForm() err: %v", err)
+		return
+	}
+	user_rfid := r.FormValue("user_rfid")
+	if len(user_rfid) != 20 { // super-simplistic validation.
+		log.Printf("Update form: invalid rfid %s\n", user_rfid)
+		return
+	}
+	userstore.InsertOrUpdateUser(user_rfid, func(user *User) bool {
+		user.UpdateFromFormValues(r)
+		post_result <- user
+		post_result <- user
+		return true
+	})
 }
 
 func main() {
@@ -124,6 +145,9 @@ func main() {
 
 	http.HandleFunc("/arrival", func(w http.ResponseWriter, r *http.Request) {
 		handleUserArrival(user_channel, w, r)
+	})
+	http.HandleFunc("/update-user", func(w http.ResponseWriter, r *http.Request) {
+		handleUpdateUser(w, r, user_channel, userstore)
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http_sendResource(MainPageTemplate, w)

@@ -19,7 +19,7 @@
 </head>
 <body bgcolor="#D8BCAB">
   <h1 align="center">Santa Clara University Maker Innovation Lab</h1>
-  <form align="center" name="update_user" id="update_user">
+  <form align="center" action="/update-user" name="update_user" id="update_user" method="post">
     <input id="user_rfid" type="hidden" name="user_rfid"/>
     <table>
       <tr>
@@ -40,7 +40,7 @@
         <td><input id="perm_cnc" type="checkbox" name="perm_cnc"/></td>
         <td><input id="perm_tablesaw" type="checkbox" name="perm_tablesaw"/></td>
         <td><input id="perm_electronics" type="checkbox" name="perm_electronics"/></td>
-        <td><button name="update" value="Update">Update</button></td>
+        <td><button type="submit" name="update" value="Update">Update</button></td>
       </tr>
     </table>
   </form>
