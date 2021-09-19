@@ -31,7 +31,7 @@ https://github.com/nfc-tools/libnfc/releases
 
 
 ### /etc/systemd/system/microorb.service
-```systemd
+```ini
 [Unit]
 Description=Microorb
 StartLimitIntervalSec=0
@@ -49,7 +49,7 @@ WantedBy=multi-user.target
 
 
 ### /etc/systemd/system/makerspace_tag.service
-```systemd
+```ini
 [Unit]
 Description=Makerspace Tag
 StartLimitIntervalSec=0
@@ -91,7 +91,7 @@ xset -dpms
 
 Then, maybe put in some autostart, e.g.
 `/etc/xdg/autostart/kiosk.desktop`
-```
+```ini
 [Desktop Entry]
 Exec=/home/pi/bin/kiosk.sh`
 
