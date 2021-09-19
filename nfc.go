@@ -90,12 +90,15 @@ func http_sendResource(local_path string, out http.ResponseWriter) {
 	out.Write(content)
 }
 
-func HandleUserArrival(user_channel chan *User) {
-	for {
-		u := <-user_channel
-		log.Printf("Channel: %s\n", u.Name)
-	}
+func handleUserArrival(user_channel chan *User, w http.ResponseWriter, r *http.Request) {
+	log.Println("Got arrival request\n")
+	// TODO: maybe time-out and return empty every now and then
+	u := <-user_channel
+	w.Header().Set("Conent-Type", "application/json")
+	json, _ := json.Marshal(u)
+	w.Write(json)
 }
+
 func main() {
 	bindAddress := flag.String("bind-address", "localhost:2000", "Port to serve from")
 	flag.Parse()
@@ -118,8 +121,10 @@ func main() {
 	log.Println("opened device", pnd, pnd.Connection())
 
 	user_channel := make(chan *User)
-	go HandleUserArrival(user_channel)
 
+	http.HandleFunc("/arrival", func(w http.ResponseWriter, r *http.Request) {
+		handleUserArrival(user_channel, w, r)
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http_sendResource(MainPageTemplate, w)
 	})

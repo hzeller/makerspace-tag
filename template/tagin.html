@@ -20,7 +20,7 @@
 <body bgcolor="#D8BCAB">
   <h1 align="center">Santa Clara University Maker Innovation Lab</h1>
   <form align="center" name="update_user" id="update_user">
-    <input type="hidden" name="user_rfid"/>
+    <input id="user_rfid" type="hidden" name="user_rfid"/>
     <table>
       <tr>
         <th>Name</th>
@@ -33,16 +33,41 @@
         <th></th>
       </tr>
       <tr>
-        <td><input type="text" size="30 "name="user_name"/></td>
-        <td><input type="checkbox" name="perm_printer3d"/></td>
-        <td><input type="checkbox" name="perm_laser"/></td>
-        <td><input type="checkbox" name="perm_vinyl"/></td>
-        <td><input type="checkbox" name="perm_cnc"/></td>
-        <td><input type="checkbox" name="perm_tablesaw"/></td>
-        <td><input type="checkbox" name="perm_electronics"/></td>
+        <td><input id="user_name" type="text" size="30 "name="user_name"/></td>
+        <td><input id="perm_printer3d" type="checkbox" name="perm_printer3d"/></td>
+        <td><input id="perm_laser" type="checkbox" name="perm_laser"/></td>
+        <td><input id="perm_vinyl" type="checkbox" name="perm_vinyl"/></td>
+        <td><input id="perm_cnc" type="checkbox" name="perm_cnc"/></td>
+        <td><input id="perm_tablesaw" type="checkbox" name="perm_tablesaw"/></td>
+        <td><input id="perm_electronics" type="checkbox" name="perm_electronics"/></td>
         <td><button name="update" value="Update">Update</button></td>
       </tr>
     </table>
-
   </form>
+  <script>
+   function updateArrival() {
+     var xmlhttp = new XMLHttpRequest();
+     xmlhttp.onreadystatechange = function() {
+       if (xmlhttp.readyState != 4) return;
+       console.log("HZGot: " + xmlhttp.responseText)
+       obj = JSON.parse(xmlhttp.responseText)
+       document.getElementById("user_name").value=obj.user_name;
+       if (obj.user_name == "") {
+         document.getElementById("user_name").placeholder="New user " + obj.user_rfid;
+       }
+       document.getElementById("user_rfid").value=obj.user_rfid;
+       for (key in obj) {
+         if (key.startsWith("perm_")) {
+           document.getElementById(key).checked=obj[key];
+         }
+       }
+       updateArrival();  // Wait for next update.
+     }
+     var url="/arrival"
+     xmlhttp.open("GET", url, true);
+     xmlhttp.send();
+   }
+
+   updateArrival();
+  </script>
 </body>
