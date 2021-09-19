@@ -1,8 +1,8 @@
 GO=/usr/local/go/bin/go
 
-all: nfc
+all: makerspace_tag
 
-nfc : *.go
+makerspace_tag : *.go
 	$(GO) build
 
 clean:

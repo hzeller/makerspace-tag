@@ -1,3 +1,23 @@
 sudo aptitude install libnfc-dev libnfc-bin libasound-dev
 Needs at least 1.8.0 https://github.com/nfc-tools/libnfc/releases
 go mod download github.com/clausecker/nfc/v2
+
+In pulse configuration /etc/pulse, comment out
+#load-module module-suspend-on-idle
+
+
+---- /etc/systemd/system/microorb.service
+[Unit]
+Description=Microorb
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=pi
+ExecStart=/usr/local/bin/microorb -P 9999
+
+[Install]
+WantedBy=multi-user.target
+---------------

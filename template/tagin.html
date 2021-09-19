@@ -75,10 +75,10 @@
    }
 
    function updateArrival() {
+     if (!keep_arrival_requesting) return;
      fetchJsonAndProcess("/arrival", function(str) {
        updateForm(str);
-       if (keep_arrival_requesting)
-         updateArrival();
+       updateArrival();
      });
    }
 
