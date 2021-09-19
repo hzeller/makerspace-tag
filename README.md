@@ -28,7 +28,25 @@ sudo aptitude install golang libnfc-dev
 nfc version needs to be at least 1.8.0
 https://github.com/nfc-tools/libnfc/releases
 
+## Building
 
+First time
+```
+go mod download github.com/clausecker/nfc/v2
+make
+```
+
+Then afterwards, just
+```
+make
+```
+
+should do it.
+
+## Running
+```
+./makerspace-tag
+```
 
 ### /etc/systemd/system/microorb.service
 ```ini
