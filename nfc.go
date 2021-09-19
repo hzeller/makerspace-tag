@@ -46,6 +46,28 @@ func GetCard(pnd *nfc.Device) ([10]byte, error) {
 	}
 }
 
+type UserArrival struct {
+	user_channel chan *User
+	last_user    *User
+}
+
+func NewUserArrival() *UserArrival {
+	return &UserArrival{
+		user_channel: make(chan *User),
+	}
+}
+func (u *UserArrival) Post(user *User) {
+	u.user_channel <- user
+	u.last_user = user
+}
+func (u *UserArrival) Receive() *User {
+	user := <-u.user_channel
+	return user
+}
+func (u *UserArrival) LastUser() *User {
+	return u.last_user
+}
+
 func blink(color string, millis int) {
 	http.Get("http://127.0.0.1:9999/set?c=" + color)
 	time.Sleep(time.Duration(millis) * time.Millisecond)
@@ -58,10 +80,6 @@ func beep(issue bool) {
 	} else {
 		go exec.Command(WavPlayer, SoundPath+"/accept.wav").Run()
 	}
-}
-
-func has_access(card [10]byte) bool {
-	return card == [10]byte{0xA2, 0x36, 0x3D, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 }
 
 func log_tag(card [10]byte) error {
@@ -90,17 +108,26 @@ func http_sendResource(local_path string, out http.ResponseWriter) {
 	out.Write(content)
 }
 
-func handleUserArrival(user_channel chan *User, w http.ResponseWriter, r *http.Request) {
-	log.Println("Got arrival request\n")
-	// TODO: maybe time-out and return empty every now and then
-	u := <-user_channel
-	log.Println("arrival: got user from channel")
+func handleUserArrival(user_arrival *UserArrival, is_initial bool, w http.ResponseWriter, r *http.Request) {
+	var user *User
+	if is_initial {
+		user = user_arrival.LastUser()
+	} else {
+		user = user_arrival.Receive()
+	}
 	w.Header().Set("Conent-Type", "application/json")
-	json, _ := json.Marshal(u)
-	w.Write(json)
+	if user != nil {
+		json, _ := json.Marshal(user)
+		w.Write(json)
+	} else {
+		fmt.Fprintf(w, "{}")
+	}
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
-func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result chan *User, userstore *UserStore) {
+func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result *UserArrival, userstore *UserStore) {
 	defer http.Redirect(w, r, "/", http.StatusSeeOther)
 
 	if err := r.ParseForm(); err != nil {
@@ -114,8 +141,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result chan *
 	}
 	userstore.InsertOrUpdateUser(user_rfid, func(user *User) bool {
 		user.UpdateFromFormValues(r)
-		post_result <- user
-		post_result <- user
+		post_result.Post(user)
 		return true
 	})
 }
@@ -141,13 +167,17 @@ func main() {
 
 	log.Println("opened device", pnd, pnd.Connection())
 
-	user_channel := make(chan *User)
+	user_arrival := NewUserArrival()
 
 	http.HandleFunc("/arrival", func(w http.ResponseWriter, r *http.Request) {
-		handleUserArrival(user_channel, w, r)
+		handleUserArrival(user_arrival, false, w, r)
 	})
+	http.HandleFunc("/last-user", func(w http.ResponseWriter, r *http.Request) {
+		handleUserArrival(user_arrival, true, w, r)
+	})
+
 	http.HandleFunc("/update-user", func(w http.ResponseWriter, r *http.Request) {
-		handleUpdateUser(w, r, user_channel, userstore)
+		handleUpdateUser(w, r, user_arrival, userstore)
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http_sendResource(MainPageTemplate, w)
@@ -170,15 +200,12 @@ func main() {
 		if user := userstore.get_user(code); user != nil {
 			beep(false)
 			go blink("00ff00", 200)
-			json, _ := json.Marshal(user)
-			log.Printf("Got user %s\n", json)
-			user_channel <- user
+			user_arrival.Post(user)
 		} else {
 			beep(true)
 			go blink("ff0000", 2000)
-			log.Printf("Unknown user.\n")
 			user = userstore.createEmptyUser(code)
-			user_channel <- user
+			user_arrival.Post(user)
 		}
 		if err := log_tag(card_id); err != nil {
 			log.Printf("Can't write to logfile: %v\n", err)

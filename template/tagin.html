@@ -17,9 +17,12 @@
    input[type='checkbox'] { width: 2vw; height: 2vw; }
   </style>
 </head>
+<script>
+ var keep_arrival_requesting = true;
+</script>
 <body bgcolor="#D8BCAB">
   <h1 align="center">Santa Clara University Maker Innovation Lab</h1>
-  <form align="center" action="/update-user" name="update_user" id="update_user" method="post">
+  <form align="center" action="/update-user" name="update_user" id="update_user" method="post" onsubmit="{ keep_arrival_requesting=false; }">
     <input id="user_rfid" type="hidden" name="user_rfid"/>
     <table>
       <tr>
@@ -40,34 +43,52 @@
         <td><input id="perm_cnc" type="checkbox" name="perm_cnc"/></td>
         <td><input id="perm_tablesaw" type="checkbox" name="perm_tablesaw"/></td>
         <td><input id="perm_electronics" type="checkbox" name="perm_electronics"/></td>
-        <td><button type="submit" name="update" value="Update">Update</button></td>
+        <td><button type="submit" name="update" value="Update" style="font-size: 2vw;">Update</button></td>
       </tr>
     </table>
   </form>
   <script>
-   function updateArrival() {
+   function updateForm(json_string) {
+     if (json_string == undefined || json_string == "") return;
+     obj = JSON.parse(json_string)
+     if (obj.user_rfid == undefined) return;
+     document.getElementById("user_name").value=obj.user_name;
+     if (obj.user_name == "") {
+       document.getElementById("user_name").placeholder="New user " + obj.user_rfid;
+     }
+     document.getElementById("user_rfid").value=obj.user_rfid;
+     for (key in obj) {
+       if (key.startsWith("perm_")) {
+         document.getElementById(key).checked=obj[key];
+       }
+     }
+   }
+
+   function fetchJsonAndProcess(url, fun) {
      var xmlhttp = new XMLHttpRequest();
      xmlhttp.onreadystatechange = function() {
        if (xmlhttp.readyState != 4) return;
-       console.log("HZGot: " + xmlhttp.responseText)
-       obj = JSON.parse(xmlhttp.responseText)
-       document.getElementById("user_name").value=obj.user_name;
-       if (obj.user_name == "") {
-         document.getElementById("user_name").placeholder="New user " + obj.user_rfid;
-       }
-       document.getElementById("user_rfid").value=obj.user_rfid;
-       for (key in obj) {
-         if (key.startsWith("perm_")) {
-           document.getElementById(key).checked=obj[key];
-         }
-       }
-       updateArrival();  // Wait for next update.
+       fun(xmlhttp.responseText)
      }
-     var url="/arrival"
      xmlhttp.open("GET", url, true);
      xmlhttp.send();
    }
 
-   updateArrival();
+   function updateArrival() {
+     fetchJsonAndProcess("/arrival", function(str) {
+       updateForm(str);
+       if (keep_arrival_requesting)
+         updateArrival();
+     });
+   }
+
+   function initialSet() {
+     fetchJsonAndProcess("/last-user", function(str) {
+       updateForm(str);
+       updateArrival();
+     })
+   }
+
+   initialSet();
   </script>
 </body>
