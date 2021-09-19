@@ -2,17 +2,23 @@ package main
 
 import (
 	"fmt"
-	"log"
-
 	nfc "github.com/clausecker/nfc/v2"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"time"
+)
+
+const (
+	WavPlayer = "/usr/bin/aplay"
+	SoundPath = "/home/pi/tagsounds"
+	LogDir    = "/home/pi/tag-log"
 )
 
 var (
-	// These settings works with the ACR122U. Your milage may vary with
-	// other devices.
-	m = nfc.Modulation{Type: nfc.ISO14443a, BaudRate: nfc.Nbr106}
-	// Use an empty string to select first device libnfc sees
-	devstr = ""
+	modulation = nfc.Modulation{Type: nfc.ISO14443a, BaudRate: nfc.Nbr106}
+	devstr     = "" // use first device seen.
 )
 
 // This will detect tags or cards swiped over the reader.
@@ -20,7 +26,7 @@ var (
 // Only cares about the first target it sees.
 func GetCard(pnd *nfc.Device) ([10]byte, error) {
 	for {
-		targets, err := pnd.InitiatorListPassiveTargets(m)
+		targets, err := pnd.InitiatorListPassiveTargets(modulation)
 		if err != nil {
 			return [10]byte{}, fmt.Errorf("failed to list nfc targets: %w", err)
 		}
@@ -33,9 +39,37 @@ func GetCard(pnd *nfc.Device) ([10]byte, error) {
 	}
 }
 
-func main() {
-	log.Println("using libnfc", nfc.Version())
+func blink(color string, millis int) {
+	http.Get("http://127.0.0.1:9999/set?c=" + color)
+	time.Sleep(time.Duration(millis) * time.Millisecond)
+	http.Get("http://127.0.0.1:9999/set?c=000000")
+}
 
+func beep(issue bool) {
+	if issue {
+		go exec.Command(WavPlayer, SoundPath+"/attention.wav").Run()
+	} else {
+		go exec.Command(WavPlayer, SoundPath+"/accept.wav").Run()
+	}
+}
+
+func has_access(card [10]byte) bool {
+	return card == [10]byte{0xA2, 0x36, 0x3D, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+}
+
+func log_tag(card [10]byte) error {
+	now := time.Now()
+	f, err := os.OpenFile(LogDir+"/log-"+now.Format("2006-01-02")+".csv",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(f, "%s,%X\n", time.Now().Format("2006-01-02 15:04:05"), card)
+	f.Close()
+	return nil
+}
+
+func main() {
 	pnd, err := nfc.Open(devstr)
 	if err != nil {
 		log.Fatalln("could not open device:", err)
@@ -55,11 +89,19 @@ func main() {
 			continue
 		}
 
-		if card_id != [10]byte{} {
-			// Print card ID as uppercased hex
-			log.Printf("card found: %#X", card_id)
+		if card_id == [10]byte{} { // All zeroes ... ignore.
+			continue
+		}
+
+		if has_access(card_id) {
+			beep(false)
+			go blink("00ff00", 200)
 		} else {
-			log.Println("no card found")
+			beep(true)
+			go blink("ff0000", 2000)
+		}
+		if err := log_tag(card_id); err != nil {
+			log.Printf("Can't write to logfile: %v\n", err)
 		}
 	}
 }

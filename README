@@ -1,2 +1,3 @@
-sudo aptitude install libnfc-dev libnfc-bin
+sudo aptitude install libnfc-dev libnfc-bin libasound-dev
+Needs at least 1.8.0 https://github.com/nfc-tools/libnfc/releases
 go mod download github.com/clausecker/nfc/v2
