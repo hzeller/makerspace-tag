@@ -1,4 +1,4 @@
-module nfc
+module makerspace_tag
 
 go 1.16
 

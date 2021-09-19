@@ -6,4 +6,4 @@ makerspace_tag : *.go
 	$(GO) build
 
 clean:
-	rm -f nfc
+	rm -f makerspace_tag
