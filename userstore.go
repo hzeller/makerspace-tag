@@ -21,7 +21,7 @@ type User struct {
 	Laser       bool   `json:"perm_laser"`
 	Vinyl       bool   `json:"perm_vinyl"`
 	CNC         bool   `json:"perm_cnc"`
-	Tablesaw    bool   `json:"perm_tablesaw"`
+	Drillpress  bool   `json:"perm_drillpress"`
 	Electronics bool   `json:"perm_electronics"`
 }
 
@@ -51,7 +51,7 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 		Laser:       BoolFromColumn(line, 3),
 		Vinyl:       BoolFromColumn(line, 4),
 		CNC:         BoolFromColumn(line, 5),
-		Tablesaw:    BoolFromColumn(line, 6),
+		Drillpress:  BoolFromColumn(line, 6),
 		Electronics: BoolFromColumn(line, 7),
 	}
 	return user, false
@@ -65,7 +65,7 @@ func (user *User) WriteCSV(writer *csv.Writer) {
 	fields[3] = strconv.FormatBool(user.Laser)
 	fields[4] = strconv.FormatBool(user.Vinyl)
 	fields[5] = strconv.FormatBool(user.CNC)
-	fields[6] = strconv.FormatBool(user.Tablesaw)
+	fields[6] = strconv.FormatBool(user.Drillpress)
 	fields[7] = strconv.FormatBool(user.Electronics)
 	writer.Write(fields)
 }
@@ -81,7 +81,7 @@ func (user *User) UpdateFromFormValues(r *http.Request) {
 	user.Laser = BoolFromForm(r, "perm_laser")
 	user.Vinyl = BoolFromForm(r, "perm_vinyl")
 	user.CNC = BoolFromForm(r, "perm_cnc")
-	user.Tablesaw = BoolFromForm(r, "perm_tablesaw")
+	user.Drillpress = BoolFromForm(r, "perm_drillpress")
 	user.Electronics = BoolFromForm(r, "perm_electronics")
 }
 
