@@ -43,6 +43,11 @@ func GetCard(pnd *nfc.Device) ([10]byte, error) {
 				return card.UID, nil
 			}
 		}
+		if err = pnd.LastError(); err != nil {
+			// This might be an unrecoverable USB situation.
+			// Just exit, systemd will restart us
+			log.Fatalf("There was some issue with the device %v", err)
+		}
 	}
 }
 
