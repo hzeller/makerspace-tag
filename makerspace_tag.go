@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	WavPlayer     = "/usr/bin/aplay"
-	BaseDir       = "/home/pi"
-	SoundPath     = BaseDir + "/tagsounds"
-	LogDir        = BaseDir + "/tag-log"
-	UserStoreFile = BaseDir + "/tag-users.csv"
+	WavPlayer          = "/usr/bin/aplay"
+	BaseDir            = "/home/pi"
+	SoundPath          = BaseDir + "/tagsounds"
+	LogDir             = BaseDir + "/tag-log"
+	UserStoreFile      = BaseDir + "/tag-users.csv"
+	UserStoreChangelog = BaseDir + "/changelog-user-updates.log"
 
 	MainPageTemplate = BaseDir + "/template/tagin.html"
 )
@@ -155,16 +156,16 @@ func main() {
 	bindAddress := flag.String("bind-address", "localhost:2000", "Port to serve from")
 	flag.Parse()
 
+	userstore := NewUserStore(UserStoreFile, UserStoreChangelog)
+	if userstore == nil {
+		log.Fatalln("Can't read userstore " + UserStoreFile)
+	}
+
 	pnd, err := nfc.Open(devstr)
 	if err != nil {
 		log.Fatalln("could not open device:", err)
 	}
 	defer pnd.Close()
-
-	userstore := NewUserStore(UserStoreFile)
-	if userstore == nil {
-		log.Fatalln("Can't read userstore " + UserStoreFile)
-	}
 
 	if err := pnd.InitiatorInit(); err != nil {
 		log.Fatalln("could not init initiator:", err)

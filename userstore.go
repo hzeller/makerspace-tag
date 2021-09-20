@@ -8,10 +8,13 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 type User struct {
@@ -42,7 +45,6 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 		log.Printf("line len is %v\n", len(line))
 		return nil, false
 	}
-	log.Printf("create user\n")
 	user = &User{
 		RFID: line[0],
 		Name: line[1],
@@ -87,13 +89,15 @@ func (user *User) UpdateFromFormValues(r *http.Request) {
 
 type UserStore struct {
 	filename  string
+	changelog string
 	userList  []*User          // Sequence of users as in file
 	code2user map[string]*User // RFID to user lookup
 }
 
-func NewUserStore(storeFilename string) *UserStore {
+func NewUserStore(storeFilename string, storeChangelog string) *UserStore {
 	s := &UserStore{
 		filename:  storeFilename,
+		changelog: storeChangelog,
 		userList:  make([]*User, 0, 10),
 		code2user: make(map[string]*User),
 	}
@@ -135,10 +139,12 @@ func (s *UserStore) InsertOrUpdateUser(rfid string, modifier ModifyFun) {
 		if existing_user != nil {
 			// Update the existing pointer
 			*existing_user = to_modify
+			s.addToChangelog(to_modify, false)
 		} else {
 			// store new.
 			s.userList = append(s.userList, &to_modify)
 			s.code2user[to_modify.RFID] = &to_modify
+			s.addToChangelog(to_modify, true)
 		}
 		s.writeDatabase()
 	}
@@ -210,4 +216,16 @@ func (s *UserStore) writeDatabase() (bool, string) {
 	os.Rename(tmpFilename, s.filename)
 
 	return true, ""
+}
+
+func (s *UserStore) addToChangelog(user User, is_created bool) {
+	now := time.Now()
+	f, err := os.OpenFile(s.changelog,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	json, _ := json.Marshal(user)
+	fmt.Fprintf(f, "time:\"%s\",is_created:\"%v\",%s\n", now.Format("2006-01-02 15:04:05"), is_created, json)
+	f.Close()
 }
