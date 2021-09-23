@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
@@ -78,24 +79,34 @@ func GetCard(pnd *nfc.Device, watchdog *WatchDog) ([10]byte, error) {
 }
 
 type UserArrival struct {
-	user_channel chan *User
-	last_user    *User
+	sync.Mutex
+	last_user *User
+	cond      *sync.Cond
 }
 
 func NewUserArrival() *UserArrival {
-	return &UserArrival{
-		user_channel: make(chan *User),
+	a := &UserArrival{
+		last_user: nil,
 	}
+	a.cond = sync.NewCond(a)
+	return a
+
 }
 func (u *UserArrival) Post(user *User) {
-	u.user_channel <- user
+	u.Lock()
 	u.last_user = user
+	u.Unlock()
+	u.cond.Broadcast()
 }
-func (u *UserArrival) Receive() *User {
-	user := <-u.user_channel
-	return user
+func (u *UserArrival) WaitNext() *User {
+	u.Lock()
+	defer u.Unlock()
+	u.cond.Wait()
+	return u.last_user
 }
 func (u *UserArrival) LastUser() *User {
+	u.Lock()
+	defer u.Unlock()
 	return u.last_user
 }
 
@@ -144,7 +155,7 @@ func handleUserArrival(user_arrival *UserArrival, is_initial bool, w http.Respon
 	if is_initial {
 		user = user_arrival.LastUser()
 	} else {
-		user = user_arrival.Receive()
+		user = user_arrival.WaitNext()
 	}
 	w.Header().Set("Conent-Type", "application/json")
 	if user != nil {
