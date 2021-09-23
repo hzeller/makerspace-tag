@@ -29,12 +29,37 @@ var (
 	devstr     = "" // use first device seen.
 )
 
+type WatchDog struct {
+	active chan bool
+}
+
+func NewWatchDog(timeout time.Duration) *WatchDog {
+	w := &WatchDog{
+		active: make(chan bool, 5),
+	}
+	go func() {
+		for {
+			select {
+			case <-w.active:
+			case <-time.After(timeout):
+				log.Fatalf("Watchdog reached timeout.")
+			}
+		}
+	}()
+	return w
+}
+func (w *WatchDog) TriggerAlive() {
+	w.active <- true
+}
+
 // This will detect tags or cards swiped over the reader.
 // Blocks until a target is detected and returns its UID.
 // Only cares about the first target it sees.
-func GetCard(pnd *nfc.Device) ([10]byte, error) {
+func GetCard(pnd *nfc.Device, watchdog *WatchDog) ([10]byte, error) {
 	for {
 		targets, err := pnd.InitiatorListPassiveTargets(modulation)
+		watchdog.TriggerAlive()
+
 		if err != nil {
 			return [10]byte{}, fmt.Errorf("failed to list nfc targets: %w", err)
 		}
@@ -161,6 +186,8 @@ func main() {
 		log.Fatalln("Can't read userstore " + UserStoreFile)
 	}
 
+	watchdog := NewWatchDog(3 * time.Second)
+
 	pnd, err := nfc.Open(devstr)
 	if err != nil {
 		log.Fatalln("could not open device:", err)
@@ -191,7 +218,7 @@ func main() {
 	go http.ListenAndServe(*bindAddress, nil)
 
 	for {
-		card_id, err := GetCard(&pnd)
+		card_id, err := GetCard(&pnd, watchdog)
 		if err != nil {
 			log.Printf("failed to get_card", err)
 			continue
