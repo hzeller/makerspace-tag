@@ -30,29 +30,6 @@ var (
 	devstr     = "" // use first device seen.
 )
 
-type WatchDog struct {
-	active chan bool
-}
-
-func NewWatchDog(timeout time.Duration) *WatchDog {
-	w := &WatchDog{
-		active: make(chan bool, 5),
-	}
-	go func() {
-		for {
-			select {
-			case <-w.active:
-			case <-time.After(timeout):
-				log.Fatalf("Watchdog reached timeout.")
-			}
-		}
-	}()
-	return w
-}
-func (w *WatchDog) TriggerAlive() {
-	w.active <- true
-}
-
 // This will detect tags or cards swiped over the reader.
 // Blocks until a target is detected and returns its UID.
 // Only cares about the first target it sees.
@@ -110,6 +87,7 @@ func (u *UserArrival) LastUser() *User {
 	return u.last_user
 }
 
+// Talk to the microorb that runs in server mode with microorb -P 9999
 func blink(color string, millis int) {
 	http.Get("http://127.0.0.1:9999/set?c=" + color)
 	time.Sleep(time.Duration(millis) * time.Millisecond)
