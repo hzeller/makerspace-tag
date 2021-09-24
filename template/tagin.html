@@ -68,7 +68,7 @@
         <th></th>
       </tr>
       <tr id="edit-row">
-        <td><input id="user_name" type="text" size="30 "name="user_name" onclick="InEditing();" onkeypress="InEditing();"/></td>
+        <td><input id="user_name" type="text" size="30 "name="user_name" onclick="InEditing();" onkeydown="InEditing();"/></td>
         <td><input id="perm_printer3d" type="checkbox" name="perm_printer3d" onclick="InEditing();"/></td>
         <td><input id="perm_laser" type="checkbox" name="perm_laser" onclick="InEditing();"/></td>
         <td><input id="perm_vinyl" type="checkbox" name="perm_vinyl" onclick="InEditing();"/></td>
@@ -94,9 +94,12 @@
      // tagging in again, don't update the form.
      if (rfid_field.value == obj.user_rfid) return;
 
+     // While updating, also remove focus (.blur()) from the
+     // elements so that editing requires a deliberate click.
      rfid_field.value=obj.user_rfid;
      var user_field = document.getElementById("user_name");
      user_field.value=obj.user_name;
+     user_field.blur();
      if (obj.user_name == "") {
        user_field.placeholder="New user " + obj.user_rfid;
      }
@@ -104,7 +107,9 @@
      // All the permissions come in json fields same name as ID
      for (key in obj) {
        if (key.startsWith("perm_")) {
-         document.getElementById(key).checked=obj[key];
+         var checkbox = document.getElementById(key);
+         checkbox.checked=obj[key];
+         checkbox.blur();
        }
      }
    }
