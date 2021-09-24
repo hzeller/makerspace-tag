@@ -19,12 +19,13 @@
 </head>
 <script>
  var keep_arrival_requesting = true;
+ var show_max_rows = 17;
 </script>
 <body bgcolor="#D8BCAB">
   <h1 align="center">Santa Clara University Maker Laboratory</h1>
   <form align="center" action="/update-user" name="update_user" id="update_user" method="post" onsubmit="{ keep_arrival_requesting=false; }">
     <input id="user_rfid" type="hidden" name="user_rfid"/>
-    <table>
+    <table id="recent-table">
       <tr>
         <th>Name</th>
         <th>3D Printer</th>
@@ -45,13 +46,12 @@
         <td><input id="perm_electronics" type="checkbox" name="perm_electronics"/></td>
         <td><button type="submit" name="update" value="Update" style="font-size: 2vw;">Update</button></td>
       </tr>
+      <tr><td colspan="8" style="background:#aaffaa;">Recent</td></tr>
+      <!-- the recent table starts here -->
     </table>
   </form>
   <script>
-   function updateForm(json_string) {
-     if (json_string == undefined || json_string == "") return;
-     obj = JSON.parse(json_string)
-     if (obj.user_rfid == undefined) return;
+   function updateForm(obj) {
      document.getElementById("user_name").value=obj.user_name;
      if (obj.user_name == "") {
        document.getElementById("user_name").placeholder="New user " + obj.user_rfid;
@@ -64,31 +64,76 @@
      }
    }
 
+   function CheckText(val) {
+     return (val != undefined && val) ? "✓" : " ";
+   }
+   function insertPermission(row, col_index, value) {
+     row.insertCell(col_index).innerHTML = CheckText(value);
+   }
+
+   function updateRecentTable(obj) {
+     if (obj.user_name == "") return;  // Don't add unknown users to history
+     var table = document.getElementById("recent-table");
+     var row = table.insertRow(3);  // First row after the form
+
+     var name_cell = row.insertCell(0);
+     name_cell.innerHTML = obj.user_name;
+     name_cell.style = "text-align:left;";
+
+     // TODO(hzeller): here we have to know exactly which column
+     // contains which permission. Extract that from the table
+     // first.
+     insertPermission(row, 1, obj["perm_printer3d"]);
+     insertPermission(row, 2, obj["perm_laser"]);
+     insertPermission(row, 3, obj["perm_vinyl"]);
+     insertPermission(row, 4, obj["perm_cnc"]);
+     insertPermission(row, 5, obj["perm_drillpress"]);
+     insertPermission(row, 6, obj["perm_electronics"]);
+
+     var now = new Date();
+     var time_col = row.insertCell(7);
+     time_col.innerHTML = now.getHours() + ":" + now.getMinutes();
+
+     // Only keep a limited number of rows to display
+     while (table.rows.length > show_max_rows) {
+       table.deleteRow(table.rows.length - 1);
+     }
+   }
+
    function fetchJsonAndProcess(url, fun) {
      var xmlhttp = new XMLHttpRequest();
      xmlhttp.onreadystatechange = function() {
        if (xmlhttp.readyState != 4) return;
-       fun(xmlhttp.responseText)
+       var str = xmlhttp.responseText;
+       if(str == undefined || str == "") return;
+       var user_data = JSON.parse(str);
+       if (user_data == undefined) return;
+       fun(user_data);
      }
+
      xmlhttp.open("GET", url, true);
      xmlhttp.send();
    }
 
    function updateArrival() {
      if (!keep_arrival_requesting) return;
-     fetchJsonAndProcess("/arrival", function(str) {
-       updateForm(str);
-       updateArrival();
+     fetchJsonAndProcess("/arrival", function(user_data) {
+       if (user_data.user_rfid != undefined) {
+         updateForm(user_data);
+         updateRecentTable(user_data);
+       }
+
+       updateArrival();  // Wait for next arrival
      });
    }
 
    function initialSet() {
-     fetchJsonAndProcess("/last-user", function(str) {
-       updateForm(str);
+     fetchJsonAndProcess("/last-user", function(user_data) {
+       updateForm(user_data);
        updateArrival();
      })
    }
 
-   initialSet();
+   initialSet();  // On load, fetch last user seen.
   </script>
 </body>
