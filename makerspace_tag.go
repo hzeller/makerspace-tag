@@ -10,19 +10,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
 )
 
 const (
-	WavPlayer          = "/usr/bin/aplay"
-	BaseDir            = "/home/pi"
-	SoundPath          = BaseDir + "/tagsounds"
-	LogDir             = BaseDir + "/tag-log"
-	UserStoreFile      = BaseDir + "/tag-users.csv"
-	UserStoreChangelog = BaseDir + "/changelog-user-updates.log"
-
-	MainPageTemplate = BaseDir + "/template/tagin.html"
+	WavPlayer = "/usr/bin/aplay"
 )
 
 var (
@@ -94,17 +88,17 @@ func blink(color string, millis int) {
 	http.Get("http://127.0.0.1:9999/set?c=000000")
 }
 
-func beep(issue bool) {
-	if issue {
-		go exec.Command(WavPlayer, SoundPath+"/attention.wav").Run()
+func beep(soundpath string, attention bool) {
+	if attention {
+		go exec.Command(WavPlayer, soundpath+"/attention.wav").Run()
 	} else {
-		go exec.Command(WavPlayer, SoundPath+"/accept.wav").Run()
+		go exec.Command(WavPlayer, soundpath+"/accept.wav").Run()
 	}
 }
 
-func log_tag(card [10]byte) error {
+func log_tag(logdir string, card [10]byte) error {
 	now := time.Now()
-	f, err := os.OpenFile(LogDir+"/log-"+now.Format("2006-01-02")+".csv",
+	f, err := os.OpenFile(logdir+"/log-"+now.Format("2006-01-02")+".csv",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -168,15 +162,35 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result *UserA
 
 func main() {
 	bindAddress := flag.String("bind-address", "localhost:2000", "Port to serve from")
+	dataDir := flag.String("data", "/home/pi", "Base directory for data.")
+	resourceDir := flag.String("resources", "/home/pi", "Base directory for resources")
+
 	flag.Parse()
 
-	userstore := NewUserStore(UserStoreFile, UserStoreChangelog)
-	if userstore == nil {
-		log.Fatalln("Can't read userstore " + UserStoreFile)
+	// Data storage
+	userStoreFile := filepath.Join(*dataDir, "tag-users.csv")
+	logDir := filepath.Join(*dataDir, "tag-log")
+	userStoreChangelog := filepath.Join(*dataDir, "changelog-user-updates.log")
+	// Make sure we have the log directory available.
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Fatal("Can't create " + logDir)
 	}
 
+	// Resources
+	soundPath := filepath.Join(*resourceDir, "tagsounds")
+	htmlTemplate := filepath.Join(*resourceDir, "template/tagin.html")
+
+	// Storage of known makerspace users
+	userstore := NewUserStore(userStoreFile, userStoreChangelog)
+	if userstore == nil {
+		// Note, first time, one has to provide an empty file.
+		log.Fatalln("Can't read userstore " + userStoreFile)
+	}
+
+	// Watchdog will exit when we haven't heard from the NFC for a while.
 	watchdog := NewWatchDog(3 * time.Second)
 
+	// Open the NFC stuff.
 	pnd, err := nfc.Open(devstr)
 	if err != nil {
 		log.Fatalln("could not open device:", err)
@@ -186,26 +200,29 @@ func main() {
 	if err := pnd.InitiatorInit(); err != nil {
 		log.Fatalln("could not init initiator:", err)
 	}
-
-	log.Println("opened device", pnd, pnd.Connection())
+	log.Println("Successfully opened NFC device", pnd, pnd.Connection())
 
 	user_arrival := NewUserArrival()
 
-	http.HandleFunc("/arrival", func(w http.ResponseWriter, r *http.Request) {
-		handleUserArrival(user_arrival, false, w, r)
-	})
-	http.HandleFunc("/last-user", func(w http.ResponseWriter, r *http.Request) {
-		handleUserArrival(user_arrival, true, w, r)
-	})
-
-	http.HandleFunc("/update-user", func(w http.ResponseWriter, r *http.Request) {
-		handleUpdateUser(w, r, user_arrival, userstore)
-	})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http_sendResource(MainPageTemplate, w)
-	})
+	http.HandleFunc("/", // Serving the html page.
+		func(w http.ResponseWriter, r *http.Request) {
+			http_sendResource(htmlTemplate, w)
+		})
+	http.HandleFunc("/last-user", // Initial HTML page query
+		func(w http.ResponseWriter, r *http.Request) {
+			handleUserArrival(user_arrival, true, w, r)
+		})
+	http.HandleFunc("/arrival", // Inform HTML page about new tag-ins
+		func(w http.ResponseWriter, r *http.Request) {
+			handleUserArrival(user_arrival, false, w, r)
+		})
+	http.HandleFunc("/update-user", // Updates sent from the HTML frontend
+		func(w http.ResponseWriter, r *http.Request) {
+			handleUpdateUser(w, r, user_arrival, userstore)
+		})
 	go http.ListenAndServe(*bindAddress, nil)
 
+	// Main loop: receive tags, do something with it.
 	for {
 		card_id, err := GetCard(&pnd, watchdog)
 		if err != nil {
@@ -219,17 +236,21 @@ func main() {
 
 		code := fmt.Sprintf("%X", card_id)
 
+		// Indicate if we know the user with sound and light, then
+		// send to
 		if user := userstore.get_user(code); user != nil {
-			beep(false)
+			beep(soundPath, false)
 			go blink("00ff00", 200)
 			user_arrival.Post(user)
 		} else {
-			beep(true)
+			beep(soundPath, true)
 			go blink("ff0000", 2000)
 			user = userstore.createEmptyUser(code)
 			user_arrival.Post(user)
 		}
-		if err := log_tag(card_id); err != nil {
+
+		// Log all tag activity with time for later evaluation
+		if err := log_tag(logDir, card_id); err != nil {
 			log.Printf("Can't write to logfile: %v\n", err)
 		}
 	}

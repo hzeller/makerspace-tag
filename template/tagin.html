@@ -52,11 +52,16 @@
   </form>
   <script>
    function updateForm(obj) {
-     document.getElementById("user_name").value=obj.user_name;
-     if (obj.user_name == "") {
-       document.getElementById("user_name").placeholder="New user " + obj.user_rfid;
-     }
+     if (obj.user_rfid == undefined) return;  // Before anyone tagged in.
      document.getElementById("user_rfid").value=obj.user_rfid;
+
+     var user_field = document.getElementById("user_name");
+     user_field.value=obj.user_name;
+     if (obj.user_name == "") {
+       user_field.placeholder="New user " + obj.user_rfid;
+     }
+
+     // All the permissions come in json fields same name as ID
      for (key in obj) {
        if (key.startsWith("perm_")) {
          document.getElementById(key).checked=obj[key];
@@ -70,7 +75,6 @@
    function insertPermission(row, col_index, value) {
      row.insertCell(col_index).innerHTML = CheckText(value);
    }
-
    function updateRecentTable(obj) {
      if (obj.user_name == "") return;  // Don't add unknown users to history
      var table = document.getElementById("recent-table");
