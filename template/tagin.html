@@ -15,11 +15,42 @@
    th { text-align: center; border-left: 1px solid black; }
    input { font-size: 2vw; }
    input[type='checkbox'] { width: 2vw; height: 2vw; }
+
+   button { background-color: #eeee55; padding: 5px; }
+   .button_visible { visibility:'visible'; opacity:1; transition: opacity 0s; }
+   .button_fadeout { visibility:'hidden'; opacity:0; transition: opacity 1s; }
   </style>
 </head>
 <script>
- var keep_arrival_requesting = true;
- var show_max_rows = 17;
+ var kShowMaxRows = 17;
+ var kEditingTimeout = 10000;  // Don't mess with form while editing is going on
+
+ var keep_arrival_requesting = true;   // Don't update while anyway submitting
+
+ // Editing: while the form is being edited, protect it from updates
+ // coming from the NFC reader. So people can still tag in (and it shows
+ // up in the recent-list) while a particular user is edited.
+ // The visibility of the [Save] button indicates if editing is going on.
+ var editing_timeout_handle;
+ var is_editing = false;
+ function setEditing(edit_flag) {
+   var b = document.getElementById("submit-button");
+   b.classList.remove(edit_flag ? "button_fadeout" : "button_visible");
+   b.classList.add(edit_flag ? "button_visible" : "button_fadeout");
+   b.disabled = !edit_flag;
+   is_editing = edit_flag;
+ }
+
+ // Triggered by any of the form edit elements: if there is activity,
+ // enable [Save] button.
+ function InEditing() {
+   setEditing(true);
+   if (editing_timeout_handle != undefined) {
+     clearTimeout(editing_timeout_handle);
+   }
+   editing_timeout_handle = setTimeout(function() { setEditing(false); },
+                                       kEditingTimeout);
+ }
 </script>
 <body bgcolor="#D8BCAB">
   <h1 align="center">Santa Clara University Maker Laboratory</h1>
@@ -36,15 +67,15 @@
         <th>Electronics</th>
         <th></th>
       </tr>
-      <tr>
-        <td><input id="user_name" type="text" size="30 "name="user_name"/></td>
-        <td><input id="perm_printer3d" type="checkbox" name="perm_printer3d"/></td>
-        <td><input id="perm_laser" type="checkbox" name="perm_laser"/></td>
-        <td><input id="perm_vinyl" type="checkbox" name="perm_vinyl"/></td>
-        <td><input id="perm_cnc" type="checkbox" name="perm_cnc"/></td>
-        <td><input id="perm_drillpress" type="checkbox" name="perm_drillpress"/></td>
-        <td><input id="perm_electronics" type="checkbox" name="perm_electronics"/></td>
-        <td><button type="submit" name="update" value="Update" style="font-size: 2vw;">Update</button></td>
+      <tr id="edit-row">
+        <td><input id="user_name" type="text" size="30 "name="user_name" onclick="InEditing();" onkeypress="InEditing();"/></td>
+        <td><input id="perm_printer3d" type="checkbox" name="perm_printer3d" onclick="InEditing();"/></td>
+        <td><input id="perm_laser" type="checkbox" name="perm_laser" onclick="InEditing();"/></td>
+        <td><input id="perm_vinyl" type="checkbox" name="perm_vinyl" onclick="InEditing();"/></td>
+        <td><input id="perm_cnc" type="checkbox" name="perm_cnc" onclick="InEditing();"/></td>
+        <td><input id="perm_drillpress" type="checkbox" name="perm_drillpress" onclick="InEditing();"/></td>
+        <td><input id="perm_electronics" type="checkbox" name="perm_electronics" onclick="InEditing();"/></td>
+        <td><button id="submit-button" type="submit" name="update" value="Update" style="font-size: 2vw;">&#x1F4BE; Save</button></td>
       </tr>
       <tr><td colspan="8" style="background:#aaffaa;">Recent</td></tr>
       <!-- the recent table starts here -->
@@ -52,9 +83,18 @@
   </form>
   <script>
    function updateForm(obj) {
+     if (is_editing) return;  // Don't update form while someone is editing
      if (obj.user_rfid == undefined) return;  // Before anyone tagged in.
-     document.getElementById("user_rfid").value=obj.user_rfid;
 
+     var rfid_field = document.getElementById("user_rfid");
+
+     // If we're already editing the very same user, don't update.
+     // It might be that we are in the middle of an editing session
+     // with the [Save]-button already faded. If this is the same user
+     // tagging in again, don't update the form.
+     if (rfid_field.value == obj.user_rfid) return;
+
+     rfid_field.value=obj.user_rfid;
      var user_field = document.getElementById("user_name");
      user_field.value=obj.user_name;
      if (obj.user_name == "") {
@@ -96,10 +136,12 @@
 
      var now = new Date();
      var time_col = row.insertCell(7);
-     time_col.innerHTML = now.getHours() + ":" + now.getMinutes();
+     // TODO(hzeller): is there a date format in JS ?
+     var minute_prefix = ":" + (now.getMinutes() < 10 ? "0" : "");
+     time_col.innerHTML = now.getHours() + minute_prefix + now.getMinutes();
 
      // Only keep a limited number of rows to display
-     while (table.rows.length > show_max_rows) {
+     while (table.rows.length > kShowMaxRows) {
        table.deleteRow(table.rows.length - 1);
      }
    }
@@ -138,6 +180,7 @@
      })
    }
 
+   setEditing(false);
    initialSet();  // On load, fetch last user seen.
   </script>
 </body>
