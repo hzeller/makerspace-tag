@@ -150,7 +150,7 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result *UserA
 	}
 	user_rfid := r.FormValue("user_rfid")
 	if len(user_rfid) != 20 { // super-simplistic validation.
-		log.Printf("Update form: invalid rfid %s\n", user_rfid)
+		log.Printf("Update form: invalid rfid '%s'\n", user_rfid)
 		return
 	}
 	userstore.InsertOrUpdateUser(user_rfid, func(user *User) bool {
@@ -162,8 +162,8 @@ func handleUpdateUser(w http.ResponseWriter, r *http.Request, post_result *UserA
 
 func main() {
 	bindAddress := flag.String("bind-address", "localhost:2000", "Port to serve from")
-	dataDir := flag.String("data", "/home/pi", "Base directory for data.")
-	resourceDir := flag.String("resources", "/home/pi", "Base directory for resources")
+	dataDir := flag.String("data", "/home/pi", "Directory where user-data and tag-log is stored.")
+	resourceDir := flag.String("resources", "/home/pi", "Base directory for html-template and jingle wavs.")
 
 	flag.Parse()
 

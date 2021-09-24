@@ -25,7 +25,7 @@
  var kShowMaxRows = 17;
  var kEditingTimeout = 10000;  // Don't mess with form while editing is going on
 
- var keep_arrival_requesting = true;   // Don't update while anyway submitting
+ var currently_submitting = false;   // Don't update while anyway submitting
 
  // Editing: while the form is being edited, protect it from updates
  // coming from the NFC reader. So people can still tag in (and it shows
@@ -54,7 +54,7 @@
 </script>
 <body bgcolor="#D8BCAB">
   <h1 align="center">Santa Clara University Maker Laboratory</h1>
-  <form align="center" action="/update-user" name="update_user" id="update_user" method="post" onsubmit="{ keep_arrival_requesting=false; }">
+  <form align="center" action="/update-user" name="update_user" id="update_user" method="post" onsubmit="{ currently_submitting=true; }">
     <input id="user_rfid" type="hidden" name="user_rfid"/>
     <table id="recent-table">
       <tr>
@@ -78,7 +78,7 @@
         <td><button id="submit-button" type="submit" name="update" value="Update" style="font-size: 2vw;">&#x1F4BE; Save</button></td>
       </tr>
       <tr><td colspan="8" style="background:#aaffaa;">Recent</td></tr>
-      <!-- the recent table starts here -->
+      <!-- new rows will be inserted here by updateRecentTable() -->
     </table>
   </form>
   <script>
@@ -151,10 +151,11 @@
      }
    }
 
+   // Request json from URL, parse and call "fun" with resulting object
    function fetchJsonAndProcess(url, fun) {
      var xmlhttp = new XMLHttpRequest();
      xmlhttp.onreadystatechange = function() {
-       if (xmlhttp.readyState != 4) return;
+       if (xmlhttp.readyState != 4) return;  // Data is ready in state 4
        var str = xmlhttp.responseText;
        if(str == undefined || str == "") return;
        var user_data = JSON.parse(str);
@@ -166,26 +167,30 @@
      xmlhttp.send();
    }
 
+   // The arrival request will be blocking until the next tag-in.
    function updateArrival() {
-     if (!keep_arrival_requesting) return;
+     if (currently_submitting) return;
      fetchJsonAndProcess("/arrival", function(user_data) {
        if (user_data.user_rfid != undefined) {
          updateForm(user_data);
          updateRecentTable(user_data);
        }
 
-       updateArrival();  // Wait for next arrival
+       updateArrival();  // Looping back: Wait for next arrival
      });
    }
 
+   // On loading the page, we don't want to wait for an arrival but
+   // just get the last user available.
    function initialSet() {
      fetchJsonAndProcess("/last-user", function(user_data) {
        updateForm(user_data);
-       updateArrival();
+       updateArrival();  // Wait for arrivals
      })
    }
 
+   // On load, switch off editing and fetch last user seen.
    setEditing(false);
-   initialSet();  // On load, fetch last user seen.
+   initialSet();
   </script>
 </body>
