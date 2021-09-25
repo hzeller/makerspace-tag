@@ -159,6 +159,6 @@ Then, maybe put in some autostart, e.g.
 `/etc/xdg/autostart/kiosk.desktop`
 ```ini
 [Desktop Entry]
-Exec=/home/pi/bin/kiosk.sh`
+Exec=/home/pi/bin/kiosk.sh
 
 ```
