@@ -61,7 +61,6 @@ func NewUserArrival() *UserArrival {
 	}
 	a.cond = sync.NewCond(a)
 	return a
-
 }
 func (u *UserArrival) Post(user *User) {
 	u.Lock()
