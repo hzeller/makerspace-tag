@@ -5,7 +5,7 @@
    }
    table {
      border: 1px solid black;
-     font-size: 2vw;
+     font-size: 1.8vw;
      border-spacing: 3px;
    }
    table tr td:nth-child(even) { background: #00ffff; }
@@ -16,8 +16,9 @@
 
    td { text-align: center; border-left: 1px solid black; }
    th { text-align: center; border-left: 1px solid black; }
-   input { font-size: 2vw; }
-   input[type='checkbox'] { width: 2vw; height: 2vw; }
+   input { font-size: 1.8vw; }
+   select { font-size: 1.8vw; }
+   input[type='checkbox'] { width: 1.8vw; height: 1.8vw; }
 
    button { background-color: #eeee55; padding: 5px; }
    .button_visible { visibility:'visible'; opacity:1; transition: opacity 0s; }
@@ -62,6 +63,7 @@
     <table id="recent-table">
       <tr>
         <th>Name</th>
+        <th>Role</th>
         <th>3D Printer</th>
         <th>Laser</th>
         <th>Vinyl</th>
@@ -72,15 +74,23 @@
       </tr>
       <tr id="edit-row">
         <td><input id="user_name" type="text" size="30 "name="user_name" onclick="InEditing();" onkeydown="InEditing();"/></td>
+        <td><select id="user_role" onclick="InEditing();" name="user_role">
+          <!-- Right now, we just store these as plain strings -->
+          <option>-</option>
+          <option>Undergrad</option>
+          <option>Grad Student</option>
+          <option>Faculty</option>
+          <option>Staff</option>
+        </select></td>
         <td><input id="perm_printer3d" type="checkbox" name="perm_printer3d" onclick="InEditing();"/></td>
         <td><input id="perm_laser" type="checkbox" name="perm_laser" onclick="InEditing();"/></td>
         <td><input id="perm_vinyl" type="checkbox" name="perm_vinyl" onclick="InEditing();"/></td>
         <td><input id="perm_cnc" type="checkbox" name="perm_cnc" onclick="InEditing();"/></td>
         <td><input id="perm_drillpress" type="checkbox" name="perm_drillpress" onclick="InEditing();"/></td>
         <td><input id="perm_electronics" type="checkbox" name="perm_electronics" onclick="InEditing();"/></td>
-        <td><button id="submit-button" type="submit" name="update" value="Update" style="font-size: 2vw;">&#x1F4BE; Save</button></td>
+        <td><button id="submit-button" type="submit" name="update" value="Update" style="font-size: 1.8vw;">&#x1F4BE; Save</button></td>
       </tr>
-      <tr><td colspan="8" style="background:#aaffaa;">Recent</td></tr>
+      <tr><td colspan="9" style="background:#aaffaa;">Recent</td></tr>
       <!-- new rows will be inserted here by updateRecentTable() -->
     </table>
   </form>
@@ -105,6 +115,15 @@
      user_field.blur();
      if (obj.user_name == "") {
        user_field.placeholder="New user " + obj.user_rfid;
+     }
+
+     var role_select = document.getElementById("user_role");
+     role_select.selectedIndex = 0;
+     for(var i = 0; i < role_select.length; i++) {
+       if (role_select.options[i].value == obj.user_role) {
+         role_select.selectedIndex = i;
+         break;
+       }
      }
 
      // All the permissions come in json fields same name as ID
@@ -132,17 +151,20 @@
      name_cell.innerHTML = obj.user_name;
      name_cell.style = "text-align:left;";
 
+     var role_cell = row.insertCell(1);
+     role_cell.innerHTML = obj["user_role"];
+
      // TODO(hzeller): here we have to know exactly which column
      // contains which permission. Extract that from the table
      // first.
-     insertPermission(row, 1, obj["perm_printer3d"]);
-     insertPermission(row, 2, obj["perm_laser"]);
-     insertPermission(row, 3, obj["perm_vinyl"]);
-     insertPermission(row, 4, obj["perm_cnc"]);
-     insertPermission(row, 5, obj["perm_drillpress"]);
-     insertPermission(row, 6, obj["perm_electronics"]);
+     insertPermission(row, 2, obj["perm_printer3d"]);
+     insertPermission(row, 3, obj["perm_laser"]);
+     insertPermission(row, 4, obj["perm_vinyl"]);
+     insertPermission(row, 5, obj["perm_cnc"]);
+     insertPermission(row, 6, obj["perm_drillpress"]);
+     insertPermission(row, 7, obj["perm_electronics"]);
 
-     var time_col = row.insertCell(7);
+     var time_col = row.insertCell(8);
      time_col.innerHTML = obj["tag_time"];
 
      // Only keep a limited number of rows to display

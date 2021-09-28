@@ -20,6 +20,7 @@ import (
 type User struct {
 	RFID        string `json:"user_rfid"`
 	Name        string `json:"user_name"`
+	Role        string `json:"user_role"`
 	Printer3D   bool   `json:"perm_printer3d"`
 	Laser       bool   `json:"perm_laser"`
 	Vinyl       bool   `json:"perm_vinyl"`
@@ -34,6 +35,13 @@ func BoolFromColumn(columns []string, index int) bool {
 	}
 	value, err := strconv.ParseBool(columns[index])
 	return err == nil && value
+}
+
+func StringFromColumn(columns []string, index int) string {
+	if len(columns) <= index {
+		return ""
+	}
+	return columns[index]
 }
 
 func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
@@ -55,12 +63,14 @@ func NewUserFromCSV(reader *csv.Reader) (user *User, done bool) {
 		CNC:         BoolFromColumn(line, 5),
 		Drillpress:  BoolFromColumn(line, 6),
 		Electronics: BoolFromColumn(line, 7),
+		Role:        StringFromColumn(line, 8),
+		// Note: new fields always at the end
 	}
 	return user, false
 }
 
 func (user *User) WriteCSV(writer *csv.Writer) {
-	var fields []string = make([]string, 8)
+	var fields []string = make([]string, 9)
 	fields[0] = user.RFID
 	fields[1] = user.Name
 	fields[2] = strconv.FormatBool(user.Printer3D)
@@ -69,6 +79,7 @@ func (user *User) WriteCSV(writer *csv.Writer) {
 	fields[5] = strconv.FormatBool(user.CNC)
 	fields[6] = strconv.FormatBool(user.Drillpress)
 	fields[7] = strconv.FormatBool(user.Electronics)
+	fields[8] = user.Role
 	writer.Write(fields)
 }
 
@@ -79,6 +90,7 @@ func BoolFromForm(r *http.Request, name string) bool {
 func (user *User) UpdateFromFormValues(r *http.Request) {
 	// Don't update RFID code
 	user.Name = r.FormValue("user_name")
+	user.Role = r.FormValue("user_role")
 	user.Printer3D = BoolFromForm(r, "perm_printer3d")
 	user.Laser = BoolFromForm(r, "perm_laser")
 	user.Vinyl = BoolFromForm(r, "perm_vinyl")
