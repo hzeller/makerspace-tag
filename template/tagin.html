@@ -1,5 +1,8 @@
 <head>
   <style>
+   body {
+     font-family: sans-serif;
+   }
    table {
      border: 1px solid black;
      font-size: 2vw;
@@ -139,11 +142,8 @@
      insertPermission(row, 5, obj["perm_drillpress"]);
      insertPermission(row, 6, obj["perm_electronics"]);
 
-     var now = new Date();
      var time_col = row.insertCell(7);
-     // TODO(hzeller): is there a date format in JS ?
-     var minute_prefix = ":" + (now.getMinutes() < 10 ? "0" : "");
-     time_col.innerHTML = now.getHours() + minute_prefix + now.getMinutes();
+     time_col.innerHTML = obj["tag_time"];
 
      // Only keep a limited number of rows to display
      while (table.rows.length > kShowMaxRows) {

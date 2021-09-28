@@ -49,9 +49,16 @@ func GetCard(pnd *nfc.Device, watchdog *WatchDog) ([10]byte, error) {
 	}
 }
 
+// Timestamped user has all the fields of the regular user, but also contains
+// the time when they tagged. Useful to show in the UI.
+type TimestampedUser struct {
+	User
+	Arrival string `json:"tag_time"`
+}
+
 type UserArrival struct {
 	sync.Mutex
-	last_user *User
+	last_user *TimestampedUser
 	cond      *sync.Cond
 }
 
@@ -64,17 +71,20 @@ func NewUserArrival() *UserArrival {
 }
 func (u *UserArrival) Post(user *User) {
 	u.Lock()
-	u.last_user = user
+	u.last_user = &TimestampedUser{
+		User:    *user,
+		Arrival: time.Now().Format("15:04"),
+	}
 	u.Unlock()
 	u.cond.Broadcast()
 }
-func (u *UserArrival) WaitNext() *User {
+func (u *UserArrival) WaitNext() *TimestampedUser {
 	u.Lock()
 	defer u.Unlock()
 	u.cond.Wait()
 	return u.last_user
 }
-func (u *UserArrival) LastUser() *User {
+func (u *UserArrival) LastUser() *TimestampedUser {
 	u.Lock()
 	defer u.Unlock()
 	return u.last_user
@@ -122,7 +132,7 @@ func http_sendResource(local_path string, out http.ResponseWriter) {
 }
 
 func handleUserArrival(user_arrival *UserArrival, is_initial bool, w http.ResponseWriter, r *http.Request) {
-	var user *User
+	var user *TimestampedUser
 	if is_initial {
 		user = user_arrival.LastUser()
 	} else {
